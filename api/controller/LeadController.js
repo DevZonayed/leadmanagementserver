@@ -20,8 +20,8 @@ const handleBulkEntry = AsyncHandler(async (req, res, next) => {
   let { _id, fullName } = req.tokenInfo;
 
   // Bulk Entry Title Validfation
-  const entry = await BulkEntry.find({ title });
-  if (entry.length !== 0) {
+  const entry = await BulkEntry.exists({ title });
+  if (entry) {
     let error = new Error("Please give a unique Title !");
     res.status(409);
     next(error);
@@ -78,8 +78,14 @@ const handleBulkEntry = AsyncHandler(async (req, res, next) => {
           ];
         }
 
-        // Change Lead Status
-        if (modifyedLead.leadStatus.length == 0) {
+        if (
+          !modifyedLead?.leadStatus
+            .map((item) => item?.session?.id.toString())
+            .includes(session._id) ||
+          !modifyedLead?.leadStatus
+            .map((item) => item?.leadFrom)
+            .includes(item.leadFrom)
+        ) {
           modifyedLead.leadStatus = [
             ...modifyedLead.leadStatus,
             {
@@ -96,39 +102,13 @@ const handleBulkEntry = AsyncHandler(async (req, res, next) => {
                 title: subject.title,
                 id: subject._id,
               },
-              leadAt: new Date(item.leadAt).getTime() || null,
+              leadAt:
+                new Date(item.leadAt).getTime() < Date.now()
+                  ? new Date(item.leadAt).getTime()
+                  : Date.now(),
             },
           ];
-          await modifyedLead.save();
-        } else {
-          if (modifyedLead?.history?.length !== 0) {
-            if (
-              new Date(
-                modifyedLead?.history[modifyedLead?.history.length - 1].callAt
-              ) < new Date()
-            ) {
-              modifyedLead.leadStatus = [
-                ...modifyedLead.leadStatus,
-                {
-                  leadFrom: item.leadFrom,
-                  leadBy: {
-                    name: leadBy || "Self",
-                    id: null,
-                  },
-                  session: {
-                    sessionNo: session.sessionNo,
-                    id: session._id,
-                  },
-                  subject: {
-                    title: subject.title,
-                    id: subject._id,
-                  },
-                  leadAt: new Date(item.leadAt).getTime() || null,
-                },
-              ];
-              await modifyedLead.save();
-            }
-          }
+          modifyedLead.save();
         }
 
         return modifyedLead._id;
@@ -354,6 +334,40 @@ const getLeadByAgent = AsyncHandler(async (req, res, next) => {
     data: leads,
   });
 });
+
+/**
+ *
+ */
+
+// const handleLeadDeletebyId = AsyncHandler(async (req, res, next) => {
+//   const response = await Lead.deleteMany({ _id: { $nin: allDeletableDataId } });
+
+//   // allDeletableDataId.map(
+//   //   AsyncHandler(async (item) => {
+//   //     await Subject.updateOne(
+//   //       { _id: "63b996b9ebb67056829bcc9e" },
+//   //       {
+//   //         $pull: {
+//   //           leads: item,
+//   //         },
+//   //       }
+//   //     );
+//   //     await Session.updateOne(
+//   //       { _id: "63b996e0ebb67056829bcca3" },
+//   //       {
+//   //         $pull: {
+//   //           leads: item,
+//   //         },
+//   //       }
+//   //     );
+//   //   })
+//   // );
+
+//   res.json({
+//     message: "Data Delete success",
+//     response,
+//   });
+// });
 
 module.exports = {
   handleBulkEntry,

@@ -67,7 +67,8 @@ function allExpairedCall(leads) {
       !item.admitionStatus.isAdmitted &&
       !isDate(item.followUpStatus.callAt) &&
       // !/^done$/i.test(latestHistory?.callStatus)
-      !/^done$/i.test(callStatus(item))
+      /^notapplicable$/i.test(callStatus(item)) &&
+      !/^dome$/i.test(callStatus(item))
     );
   });
 }
@@ -92,20 +93,47 @@ function getAllFollowUps(leads) {
   };
 }
 
+/**
+ *  Give a appropiate call status based on some condition
+ * if any one input a lead from diffrent area after 5 days of assign someone then it will behave like fresh lead
+ * @param {lead} lead
+ * @returns
+ */
 function callStatus(lead) {
   let latestHistory = lead.history[lead.history.length - 1];
   if (latestHistory === undefined) {
-    return "Not Found!";
+    return "notapplicable";
   }
   if (
-    new Date(latestHistory?.callAt) >
-      new Date(new Date(lead.updatedAt).getTime() - 8640000) &&
+    new Date(lead?.agent?.AssignAt) >
+      new Date(
+        new Date(lead.leadStatus[lead.leadStatus.length - 1].leadAt).getTime() -
+          864000000
+      ) &&
     latestHistory?.callStatus !== ""
   ) {
     return latestHistory.callStatus;
   }
 
-  return "Not Found!";
+  return "notapplicable";
+}
+
+/**
+ * Is the value exsit in spacifiq object key
+ * @param {all data} list
+ * @param {key name} prop
+ * @param {key value to match} val
+ * @returns
+ */
+function objectPropInArray(list, prop, val) {
+  if (list.length > 0) {
+    for (i in list) {
+      if (list[i][prop] === val) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 module.exports = {
@@ -114,4 +142,5 @@ module.exports = {
   othersStatusLead,
   allExpairedCall,
   getAllFollowUps,
+  objectPropInArray,
 };

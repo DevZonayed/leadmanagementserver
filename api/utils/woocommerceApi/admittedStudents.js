@@ -10,10 +10,25 @@ async function getOrders() {
       version: "wc/v3",
     });
 
-    const data = await api.get("orders", { per_page: 100, page: 1 });
+    let data = [];
 
-    const obj = CircularJSON.stringify(data);
-    return obj;
+    for (let i = 1; i < 1000; i++) {
+      if (i === 1) {
+        data = [];
+      }
+      let response = await api.get("orders", { per_page: 100, page: i });
+      data = [
+        ...new Set([
+          ...data,
+          ...JSON.parse(CircularJSON.stringify(response))?.data,
+        ]),
+      ];
+      if (JSON.parse(CircularJSON.stringify(response))?.data.length < 100) {
+        break;
+      }
+    }
+
+    return data;
   } catch (err) {
     console.log(err);
   }

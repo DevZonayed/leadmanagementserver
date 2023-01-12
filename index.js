@@ -25,27 +25,28 @@ require("colors");
 const app = express();
 envairomentVariable.config();
 
+var whitelist = ["https://management.shorobindu.com", "http://localhost:3000"];
+var corsOptions = {
+  origin: function (origin, callback) {
+    if (whitelist.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+};
+
+// app.use(cors(corsOptions))
+app.use(cors());
+
 // All middleware goes here
 app.use(compression());
 app.use(express.urlencoded({ extended: false }));
-app.use(cors());
 app.set("trust proxy", true);
 app.use(cookieParser());
 app.use(
   express.json({
     limit: "50mb",
-  })
-);
-
-app.get(
-  "/",
-  expressAsyncHandler(async (req, res, next) => {
-    const data = await getOrders();
-
-    res.status(200).json({
-      message: "Data get Successful",
-      data: JSON.parse(data).data,
-    });
   })
 );
 
