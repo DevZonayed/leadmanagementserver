@@ -46,7 +46,11 @@ const createSubject = AsyncHandler(async (req, res, next) => {
  * @param {*} next
  */
 const getAllSubjects = AsyncHandler(async (req, res, next) => {
-  const subjects = await Subject.find().select("-__v");
+  const subjects = await Subject.find()
+    .sort({
+      updatedAt: -1,
+    })
+    .select("-__v");
   res.status(200).json({
     messaqge: "Subject Get Successful",
     data: subjects,
@@ -80,7 +84,9 @@ const terminateSubject = AsyncHandler(async (req, res, next) => {
     next(error);
   }
 
-  const allSubject = await Subject.find();
+  const allSubject = await Subject.find().sort({
+    updatedAt: -1,
+  });
 
   res.json({
     message: "Subject Terminate Success",

@@ -1,7 +1,7 @@
 const WooCommerceRestApi = require("@woocommerce/woocommerce-rest-api").default;
 const CircularJSON = require("circular-json");
 
-async function getOrders() {
+async function getOrders({ after, before }) {
   try {
     const api = new WooCommerceRestApi({
       url: "https://sorobindu.com/",
@@ -16,7 +16,12 @@ async function getOrders() {
       if (i === 1) {
         data = [];
       }
-      let response = await api.get("orders", { per_page: 100, page: i });
+      let response = await api.get("orders", {
+        per_page: 100,
+        page: i,
+        after: new Date(after).toISOString(),
+        before: new Date(before ? before : Date.now()).toISOString(),
+      });
       data = [
         ...new Set([
           ...data,

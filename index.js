@@ -17,9 +17,10 @@ const LeadRouter = require("./api/router/LeadRouter");
 const messageRouter = require("./api/router/messageRouter");
 const mailRouter = require("./api/router/mailRouter");
 const dashBordRouter = require("./api/router/dashBordRouter");
-const getOrders = require("./api/utils/woocommerceApi/admittedStudents");
 const path = require("path");
 const expressAsyncHandler = require("express-async-handler");
+const mapOrder = require("./api/controller/OrderController");
+const scheduleJobs = require("./api/schedules/scheduleJob");
 require("colors");
 // App Initialize
 const app = express();
@@ -49,6 +50,9 @@ app.use(
     limit: "50mb",
   })
 );
+
+// Schedule Jobs
+scheduleJobs();
 
 // User Router
 app.use("/api/v1/user", userRouter);

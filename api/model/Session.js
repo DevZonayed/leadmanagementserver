@@ -24,6 +24,7 @@ const SessionSchema = mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
       },
     },
+    admittedLead: [{ type: mongoose.Schema.Types.ObjectId, ref: "Lead" }],
     startAt: {
       type: String,
       required: true,

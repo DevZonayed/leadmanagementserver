@@ -10,6 +10,9 @@ const BulkEntrySchema = mongoose.Schema(
     previousLead: [{ type: mongoose.Schema.Types.ObjectId, ref: "Lead" }],
     freshLead: [{ type: mongoose.Schema.Types.ObjectId, ref: "Lead" }],
     admittedLead: [{ type: mongoose.Schema.Types.ObjectId, ref: "Lead" }],
+    type: {
+      type: String,
+    },
     session: {
       type: Object,
     },

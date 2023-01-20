@@ -129,6 +129,16 @@ const LeadSchema = mongoose.Schema(
         type: Number,
       },
     },
+    batchStatus: [
+      {
+        batchNo: {
+          type: String,
+        },
+        sessionId: {
+          type: mongoose.Types.ObjectId,
+        },
+      },
+    ],
     followUpStatus: {
       callAt: {
         type: Date,
@@ -155,6 +165,18 @@ const LeadSchema = mongoose.Schema(
         type: Date,
       },
     },
+    admittedSession: [
+      {
+        type: mongoose.Types.ObjectId,
+        ref: "Session",
+      },
+    ],
+    orderList: [
+      {
+        type: mongoose.Types.ObjectId,
+        ref: "Order",
+      },
+    ],
     entryType: [
       {
         type: {

@@ -12,12 +12,19 @@ const {
   getLeadByIds,
   assignAgenet,
   getLeadByAgent,
+  handleBulkAdmittedEntry,
 } = require("../controller/LeadController");
 const OnlyAdmin = require("../middleware/auth/AdminMiddleware");
 
 // All Routes
 const LeadRouter = express.Router();
 // LeadRouter.post("/deletefromids", handleLeadDeletebyId);
+LeadRouter.post(
+  "/bulkadmittedentry",
+  UserAuth,
+  OnlyAdmin,
+  handleBulkAdmittedEntry
+);
 LeadRouter.post("/bulkentry", UserAuth, OnlyAdmin, handleBulkEntry);
 LeadRouter.post("/updatelead", UserAuth, handleLeadUpdate);
 LeadRouter.post("/assignagent", UserAuth, OnlyAdmin, assignAgenet);
