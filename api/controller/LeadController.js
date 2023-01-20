@@ -16,7 +16,7 @@ const User = require("../model/User");
  * @param {*} next
  */
 const handleBulkEntry = AsyncHandler(async (req, res, next) => {
-  const { lead, session, subject, title, leadBy } = req.body;
+  const { lead, session, subject, title } = req.body;
   let { _id, fullName } = req.tokenInfo;
 
   // Bulk Entry Title Validfation
@@ -33,6 +33,7 @@ const handleBulkEntry = AsyncHandler(async (req, res, next) => {
     title: title,
     session,
     subject,
+    type: "MANUAL",
     createBy: {
       name: fullName,
       id: _id,
@@ -55,7 +56,7 @@ const handleBulkEntry = AsyncHandler(async (req, res, next) => {
               },
               email: { $each: item.email !== "" ? [item.email] : [] },
               entryType: {
-                type: "Bulk",
+                type: "General Bulk Lead",
                 title: bulkEntry.title,
                 id: bulkEntry._id,
               },
@@ -91,7 +92,7 @@ const handleBulkEntry = AsyncHandler(async (req, res, next) => {
             {
               leadFrom: item.leadFrom,
               leadBy: {
-                name: leadBy || "Self",
+                name: item.leadBy || "Self",
                 id: null,
               },
               session: {
@@ -108,7 +109,7 @@ const handleBulkEntry = AsyncHandler(async (req, res, next) => {
                   : Date.now(),
             },
           ];
-          modifyedLead.save();
+          await modifyedLead.save();
         }
 
         return modifyedLead._id;
@@ -125,11 +126,162 @@ const handleBulkEntry = AsyncHandler(async (req, res, next) => {
       },
     }
   );
-  await Subject.updateOne(
-    { _id: subject._id },
+
+  res.status(201).json({
+    message: `${
+      bulkEntry.freshLead.length + bulkEntry.previousLead.length
+    } Bulk Entry Successfull`,
+    data: bulkEntry,
+  });
+});
+
+/**
+ * @route "/api/v1/lead/bulkadmittedentry"
+ * @desc "This Controler is for admitted Lead Bulk Entry
+ * @Access { Private }
+ * @method "POST"
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ */
+const handleBulkAdmittedEntry = AsyncHandler(async (req, res, next) => {
+  const { lead, session, subject, title, batchNo } = req.body;
+  let { _id, fullName } = req.tokenInfo;
+
+  // Bulk Entry Title Validfation
+  const entry = await BulkEntry.exists({ title });
+  if (entry) {
+    let error = new Error("Please give a unique Title !");
+    res.status(409);
+    next(error);
+    return;
+  }
+
+  //   Create a entry Report
+  const bulkEntry = new BulkEntry({
+    title: title,
+    session,
+    subject,
+    type: "MANUAL",
+    createBy: {
+      name: fullName,
+      id: _id,
+    },
+  });
+
+  // Lead Operations handling start here
+  let leadIDs = await Promise.all(
+    lead.map(
+      AsyncHandler(async (item) => {
+        let modifyedLead = await Lead.findOneAndUpdate(
+          {
+            $or: [{ email: item.email }, { phone: formatNumToBd(item.phone) }],
+          },
+          {
+            name: item.name,
+            admitionStatus: {
+              isAdmitted: true,
+              admittedAt: Date.now(),
+            },
+            $addToSet: {
+              admittedSession: session._id,
+              phone: {
+                $each: item.phone !== "" ? [formatNumToBd(item.phone)] : [],
+              },
+              email: { $each: item.email !== "" ? [item.email] : [] },
+              entryType: {
+                type: "Admitted bulk lead",
+                title: bulkEntry.title,
+                id: bulkEntry._id,
+              },
+            },
+          },
+          { upsert: true, new: true }
+        );
+
+        // Update Bulk Edit
+        bulkEntry.admittedLead = [...bulkEntry.admittedLead, modifyedLead._id];
+        if (
+          modifyedLead.createdAt.toString() == modifyedLead.updatedAt.toString()
+        ) {
+          //   Add to fresh lead in entry report
+          bulkEntry.freshLead = [...bulkEntry.freshLead, modifyedLead._id];
+        } else {
+          //   Add to Previous lead in entry report
+          bulkEntry.previousLead = [
+            ...bulkEntry.previousLead,
+            modifyedLead._id,
+          ];
+        }
+
+        // Batch Update at lead
+        if (
+          !modifyedLead?.batchStatus
+            .map((item) => item?.sessionId?.toString())
+            .includes(session._id) ||
+          item.batch.split(",").filter((batch) => {
+            return modifyedLead?.batchStatus.map(
+              (item) => item?.batchNo === batch
+            );
+          }).length === 0
+        ) {
+          item.batch.split(",").map((batchNo) => {
+            modifyedLead.batchStatus = [
+              ...modifyedLead.batchStatus,
+              {
+                batchNo: batchNo,
+                sessionId: session._id,
+              },
+            ];
+          });
+        }
+
+        // Lead Status update
+        if (
+          !modifyedLead?.leadStatus
+            .map((item) => item?.session?.id.toString())
+            .includes(session._id) ||
+          !modifyedLead?.leadStatus
+            .map((item) => item?.leadFrom)
+            .includes(item.leadFrom)
+        ) {
+          modifyedLead.leadStatus = [
+            ...modifyedLead.leadStatus,
+            {
+              leadFrom: item.leadFrom,
+              leadBy: {
+                name: item.leadBy || "Self",
+                id: null,
+              },
+              session: {
+                sessionNo: session.sessionNo,
+                id: session._id,
+              },
+              subject: {
+                title: subject.title,
+                id: subject._id,
+              },
+              leadAt:
+                new Date(item.leadAt).getTime() < Date.now()
+                  ? new Date(item.leadAt).getTime()
+                  : Date.now(),
+            },
+          ];
+        }
+
+        modifyedLead.save();
+        return modifyedLead._id;
+      })
+    )
+  );
+
+  await bulkEntry.save();
+  await Session.updateOne(
+    { _id: session._id },
     {
       $addToSet: {
         leads: { $each: [...leadIDs] },
+        admittedLead: { $each: [...leadIDs] },
       },
     }
   );
@@ -137,7 +289,7 @@ const handleBulkEntry = AsyncHandler(async (req, res, next) => {
   res.status(201).json({
     message: `${
       bulkEntry.freshLead.length + bulkEntry.previousLead.length
-    } Bulk Entry Successfull`,
+    } Admitted lead entry success`,
     data: bulkEntry,
   });
 });
@@ -152,7 +304,9 @@ const handleBulkEntry = AsyncHandler(async (req, res, next) => {
  * @param {*} next
  */
 const getAllBulkEntryReport = AsyncHandler(async (req, res, next) => {
-  const bulkEntry = await BulkEntry.find();
+  const bulkEntry = await BulkEntry.find().sort({
+    updatedAt: -1,
+  });
   res.status(200).json({
     message: "All bulk entry report get successful !",
     data: bulkEntry,
@@ -169,7 +323,7 @@ const getAllBulkEntryReport = AsyncHandler(async (req, res, next) => {
  * @param {*} next
  */
 const getAllLead = AsyncHandler(async (req, res, next) => {
-  const leads = await Lead.find();
+  const leads = await Lead.find().sort({ updatedAt: -1 });
   res.status(200).json({
     message: "All lead getting successfull",
     data: leads,
@@ -221,7 +375,7 @@ const getLeadByIds = AsyncHandler(async (req, res, next) => {
   }
 
   // Get All Leads
-  const leads = await Lead.find({ _id: { $in: data } });
+  const leads = await Lead.find({ _id: { $in: data } }).sort({ updatedAt: -1 });
   if (leads.length === 0) {
     res.status(404);
     let error = new Error("Nothing Found !");
@@ -310,7 +464,9 @@ const assignAgenet = AsyncHandler(async (req, res, next) => {
       },
     }
   );
-  const updatedLeads = await Lead.find({ _id: { $in: ids } });
+  const updatedLeads = await Lead.find({ _id: { $in: ids } }).sort({
+    updatedAt: -1,
+  });
   res.status(200).json({
     message: `${ids.length} Lead Assign to ${agent.firstName} Successful`,
     data: updatedLeads,
@@ -328,46 +484,14 @@ const assignAgenet = AsyncHandler(async (req, res, next) => {
  */
 const getLeadByAgent = AsyncHandler(async (req, res, next) => {
   const { user } = req.body;
-  const leads = await Lead.find({ "agent.id": user._id });
+  const leads = await Lead.find({ "agent.id": user._id }).sort({
+    updatedAt: -1,
+  });
   res.status(200).json({
     message: "All Lead Getting success",
     data: leads,
   });
 });
-
-/**
- *
- */
-
-// const handleLeadDeletebyId = AsyncHandler(async (req, res, next) => {
-//   const response = await Lead.deleteMany({ _id: { $nin: allDeletableDataId } });
-
-//   // allDeletableDataId.map(
-//   //   AsyncHandler(async (item) => {
-//   //     await Subject.updateOne(
-//   //       { _id: "63b996b9ebb67056829bcc9e" },
-//   //       {
-//   //         $pull: {
-//   //           leads: item,
-//   //         },
-//   //       }
-//   //     );
-//   //     await Session.updateOne(
-//   //       { _id: "63b996e0ebb67056829bcca3" },
-//   //       {
-//   //         $pull: {
-//   //           leads: item,
-//   //         },
-//   //       }
-//   //     );
-//   //   })
-//   // );
-
-//   res.json({
-//     message: "Data Delete success",
-//     response,
-//   });
-// });
 
 module.exports = {
   handleBulkEntry,
@@ -377,4 +501,5 @@ module.exports = {
   getLeadByIds,
   assignAgenet,
   getLeadByAgent,
+  handleBulkAdmittedEntry,
 };

@@ -136,6 +136,36 @@ function objectPropInArray(list, prop, val) {
   return false;
 }
 
+/**
+ *This mathod will remove duplicate and it will give priyority to processing then pending then cancled
+ * @param {Orders} data
+ * @returns
+ */
+const getNoDuplicateOrders = (data) => {
+  let finalData = [];
+  data.map((entry) => {
+    let indexOfExist = finalData.findIndex((val) => {
+      return (
+        val?.billing?.email === entry.billing.email ||
+        val?.billing?.phone === entry.billing.phone
+      );
+    });
+    if (indexOfExist === -1) {
+      finalData.push(entry);
+    } else {
+      if (finalData[indexOfExist].status !== "processing") {
+        if (
+          finalData[indexOfExist].status !== entry.status &&
+          entry.status === "pending"
+        ) {
+          finalData[indexOfExist] = entry;
+        }
+      }
+    }
+  });
+  return finalData;
+};
+
 module.exports = {
   filteringLeads,
   allDoneLead,
@@ -143,4 +173,5 @@ module.exports = {
   allExpairedCall,
   getAllFollowUps,
   objectPropInArray,
+  getNoDuplicateOrders,
 };

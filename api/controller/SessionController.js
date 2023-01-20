@@ -67,7 +67,9 @@ const createSession = AsyncHandler(async (req, res, next) => {
       },
     }
   );
-  const subjects = await Subject.find();
+  const subjects = await Subject.find().sort({
+    updatedAt: -1,
+  });
 
   res.status(201).json({
     message: "Session Created Successfull",
@@ -86,7 +88,11 @@ const createSession = AsyncHandler(async (req, res, next) => {
  * @param {*} next
  */
 const getAllSession = AsyncHandler(async (req, res, next) => {
-  const sessions = await Session.find().select("-__v");
+  const sessions = await Session.find()
+    .sort({
+      updatedAt: -1,
+    })
+    .select("-__v");
 
   res.status(200).json({
     messaqge: "Sessions Get Successful",
@@ -131,8 +137,12 @@ const terminateSession = AsyncHandler(async (req, res, next) => {
     }
   );
 
-  const allSession = await Session.find();
-  const subjects = await Subject.find();
+  const allSession = await Session.find().sort({
+    updatedAt: -1,
+  });
+  const subjects = await Subject.find().sort({
+    updatedAt: -1,
+  });
 
   res.status(200).json({
     message: "Subject Terminate Success",

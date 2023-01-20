@@ -19,7 +19,7 @@
 // module.exports = mongoConnection;
 
 let mongoose = require("mongoose");
-// mongoose.set("strictQuery", true);
+mongoose.set("strictQuery", true);
 async function mongoConnection() {
   try {
     let mongoString = process.env.MONGO_STRING;

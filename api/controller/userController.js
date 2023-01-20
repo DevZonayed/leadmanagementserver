@@ -145,9 +145,11 @@ const verifyUser = AsyncHandler(async (req, res, next) => {
  */
 
 const getAllUser = AsyncHandler(async (req, res) => {
-  const user = await User.find().select(
-    "-password -createdAt -updatedAt -__v -notification -lead"
-  );
+  const user = await User.find()
+    .sort({
+      updatedAt: -1,
+    })
+    .select("-password -createdAt -updatedAt -__v -notification -lead");
   res.status(200).json({
     message: "User get successful",
     data: user,
