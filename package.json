@@ -9,7 +9,7 @@
   "author": "sorobindu",
   "license": "MIT",
   "dependencies": {
-    "@woocommerce/woocommerce-rest-api": "^1.0.1",
+    "@woocommerce/woocommerce-rest-api": "^1.0.2",
     "bcrypt": "^5.1.0",
     "circular-json": "^0.5.9",
     "colors": "^1.4.0",
